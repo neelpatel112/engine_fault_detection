@@ -1,35 +1,32 @@
-# app.py
+# app.py - TensorFlow-free version
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
 import numpy as np
 import librosa
 import joblib
-import tensorflow as tf
 import tempfile
-import json
 from datetime import datetime
+import json
 
 app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
 # Configuration
 UPLOAD_FOLDER = 'temp_uploads'
 ALLOWED_EXTENSIONS = {'wav', 'mp3', 'm4a', 'ogg'}
-MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
 
 # Create temp directory
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Global variables for models (loaded lazily)
+# Global variables for models
 SCALER = None
 RF_MODEL = None
-CNN_MODEL = None
 MODEL_LOADED = False
 
 def load_models():
-    """Load ML models from saved_models directory"""
-    global SCALER, RF_MODEL, CNN_MODEL, MODEL_LOADED
+    """Load ML models - ONLY Random Forest (no TensorFlow)"""
+    global SCALER, RF_MODEL, MODEL_LOADED
     
     if MODEL_LOADED:
         return True
@@ -41,13 +38,9 @@ def load_models():
         SCALER = joblib.load('saved_models/scaler.pkl')
         print("✅ Scaler loaded")
         
-        # Load Random Forest model
+        # Load ONLY Random Forest model (skip CNN)
         RF_MODEL = joblib.load('saved_models/random_forest_model.pkl')
         print("✅ Random Forest model loaded")
-        
-        # Load CNN model
-        CNN_MODEL = tf.keras.models.load_model('saved_models/cnn_model.h5')
-        print("✅ CNN model loaded")
         
         MODEL_LOADED = True
         return True
@@ -59,7 +52,6 @@ def load_models():
 def extract_features(file_path):
     """Extract audio features from file"""
     try:
-        # Load audio file (3 seconds duration)
         audio, sample_rate = librosa.load(file_path, duration=3, offset=0.5)
         
         # MFCC features
@@ -99,9 +91,9 @@ def extract_features(file_path):
         # Tempo
         tempo, _ = librosa.beat.beat_track(y=audio, sr=sample_rate)
         
-        # Combine features (EXACTLY as trained)
+        # Combine features
         features = np.concatenate([
-            mfccs_mean[:5],  # First 5 MFCCs
+            mfccs_mean[:5],
             [chroma_stft_mean, chroma_stft_var],
             [rms_mean, rms_var],
             [spectral_centroid_mean, spectral_centroid_var],
@@ -133,27 +125,21 @@ def health_check():
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
-    """Prediction endpoint"""
-    # Check if file was uploaded
+    """Prediction endpoint - Only Random Forest"""
     if 'audio' not in request.files:
         return jsonify({'error': 'No audio file provided'}), 400
     
     file = request.files['audio']
     
-    # Check if file is empty
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
-    # Check file extension
     if not file.filename.lower().endswith(tuple(ALLOWED_EXTENSIONS)):
-        return jsonify({'error': 'Invalid file type. Use WAV, MP3, M4A, or OGG'}), 400
+        return jsonify({'error': 'Invalid file type'}), 400
     
-    # Get model type
-    model_type = request.form.get('model_type', 'cnn').lower()
-    if model_type not in ['cnn', 'rf']:
-        model_type = 'cnn'
+    # Force use Random Forest (CNN not available)
+    model_type = 'rf'
     
-    # Load models if not loaded
     if not load_models():
         return jsonify({'error': 'Models failed to load'}), 500
     
@@ -167,25 +153,15 @@ def predict():
         if features is None:
             return jsonify({'error': 'Failed to extract audio features'}), 500
         
-        # Reshape for scaler
+        # Reshape and scale
         features = features.reshape(1, -1)
-        
-        # Scale features
         features_scaled = SCALER.transform(features)
         
-        # Make prediction
-        if model_type == 'rf':
-            # Random Forest prediction
-            prediction = RF_MODEL.predict(features_scaled)[0]
-            probability = RF_MODEL.predict_proba(features_scaled)[0]
-        else:
-            # CNN prediction
-            features_scaled_cnn = features_scaled.reshape(features_scaled.shape[0], features_scaled.shape[1], 1)
-            prediction_proba = CNN_MODEL.predict(features_scaled_cnn, verbose=0)[0][0]
-            prediction = 1 if prediction_proba > 0.5 else 0
-            probability = [1 - prediction_proba, prediction_proba]
+        # Make prediction (only Random Forest)
+        prediction = RF_MODEL.predict(features_scaled)[0]
+        probability = RF_MODEL.predict_proba(features_scaled)[0]
         
-        # Clean up temp file
+        # Clean up
         if os.path.exists(temp_path):
             os.remove(temp_path)
         
@@ -207,7 +183,7 @@ def predict():
             'probability': fault_probability,
             'color': color,
             'recommendation': recommendation,
-            'model_used': 'CNN' if model_type == 'cnn' else 'Random Forest',
+            'model_used': 'Random Forest',
             'confidence': 'HIGH' if fault_probability > 0.7 else 'MEDIUM' if fault_probability > 0.3 else 'LOW',
             'timestamp': datetime.now().isoformat()
         })
@@ -216,28 +192,18 @@ def predict():
         print(f"❌ Prediction error: {str(e)}")
         return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
 
-@app.route('/api/sample', methods=['GET'])
-def get_sample():
-    """Get sample analysis results (for demo)"""
+@app.route('/api/models')
+def get_models():
+    """Get available models"""
     return jsonify({
-        'success': True,
-        'status': 'NORMAL',
-        'probability': 0.15,
-        'color': 'green',
-        'recommendation': 'Engine appears to be in normal condition',
-        'model_used': 'CNN',
-        'confidence': 'LOW',
-        'timestamp': datetime.now().isoformat()
+        'available_models': ['Random Forest'],
+        'cnn_available': False,
+        'message': 'Using Random Forest model only (lightweight)'
     })
 
 if __name__ == '__main__':
-    # Try to load models at startup
     load_models()
-    
-    # Get port from environment variable (for deployment)
     port = int(os.environ.get('PORT', 5000))
-    
     print(f"🚀 Starting Engine Fault Detection Server on port {port}")
-    print(f"📁 Model loaded: {MODEL_LOADED}")
-    
-    app.run(host='0.0.0.0', port=port, debug=False) 
+    print(f"📊 Using Random Forest model only (TensorFlow not available)")
+    app.run(host='0.0.0.0', port=port, debug=False)
