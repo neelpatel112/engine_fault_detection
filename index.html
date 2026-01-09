@@ -353,6 +353,24 @@
             font-size: 0.9rem;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
+        
+        .demo-badge {
+            display: inline-block;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -361,9 +379,9 @@
             <div class="logo">
                 <i class="fas fa-engine"></i>
             </div>
-            <h1>Engine Fault Detection System</h1>
+            <h1>Engine Fault Detection System <span class="demo-badge">DEMO</span></h1>
             <p class="subtitle">Upload engine sound recordings to detect potential faults using AI-powered analysis</p>
-            <p><i class="fas fa-info-circle"></i> Uses CNN & Random Forest models trained on audio features</p>
+            <p><i class="fas fa-info-circle"></i> Running in demonstration mode - Real ML models available offline</p>
         </header>
 
         <div class="main-content">
@@ -388,10 +406,9 @@
                 </div>
 
                 <div class="controls">
-                    <label for="modelSelect"><i class="fas fa-robot"></i> Select AI Model:</label>
+                    <label for="modelSelect"><i class="fas fa-robot"></i> AI Analysis Engine:</label>
                     <select id="modelSelect">
-                        <option value="cnn">CNN Deep Learning (High Accuracy)</option>
-                        <option value="rf">Random Forest (Fast Analysis)</option>
+                        <option value="ai">AI Engine Analysis</option>
                     </select>
 
                     <button class="analyze-btn" id="analyzeBtn">
@@ -422,10 +439,10 @@
                     <div class="loading" id="loading">
                         <div class="spinner"></div>
                         <h3>Analyzing Engine Sound...</h3>
-                        <p>Extracting features and running AI models</p>
+                        <p>Processing audio features with AI engine</p>
                     </div>
 
-                    <div id="results">
+                    <div id="results" style="display: none;">
                         <div class="result-status" id="statusText">
                             ENGINE STATUS
                         </div>
@@ -443,7 +460,7 @@
                         <div class="details">
                             <div class="detail-row">
                                 <span><i class="fas fa-robot"></i> Model Used:</span>
-                                <span id="modelUsed">CNN</span>
+                                <span id="modelUsed">AI Engine</span>
                             </div>
                             <div class="detail-row">
                                 <span><i class="fas fa-shield-alt"></i> Confidence:</span>
@@ -464,6 +481,12 @@
                         </div>
 
                         <audio controls class="audio-player" id="audioPlayer"></audio>
+                        
+                        <div style="margin-top: 20px; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 10px; text-align: center;">
+                            <p style="color: #b0bec5; font-size: 0.9rem;">
+                                <i class="fas fa-info-circle"></i> This is a demonstration. Real ML models available offline.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -485,8 +508,8 @@
                 </div>
                 <div class="step">
                     <span class="step-number">3</span>
-                    <strong>Select AI Model</strong>
-                    <p>Choose between CNN (more accurate) or Random Forest (faster).</p>
+                    <strong>AI Analysis</strong>
+                    <p>Our AI engine analyzes sound patterns for fault detection.</p>
                 </div>
                 <div class="step">
                     <span class="step-number">4</span>
@@ -510,10 +533,11 @@
         </div>
 
         <footer>
-            <p>🔧 Engine Fault Detection System | Powered by TensorFlow & Librosa</p>
-            <p>For academic project demonstration | Model accuracy: ~90% on synthetic data</p>
+            <p>🔧 Engine Fault Detection System | Academic Project Demonstration</p>
+            <p>Real ML models (CNN & Random Forest) available for offline deployment</p>
             <p style="margin-top: 10px; font-size: 0.8rem; color: #78909c;">
-                Note: This is a demonstration system. For real-world use, train models with actual engine sound data.
+                Note: This demonstration shows the complete system workflow. For actual fault detection, 
+                the trained models can be integrated locally.
             </p>
         </footer>
     </div>
@@ -620,7 +644,7 @@
             resetResults();
         }
 
-        // Analyze button handler
+        // Analyze button handler - SIMPLIFIED VERSION
         analyzeBtn.addEventListener('click', async () => {
             if (!currentAudioFile) {
                 alert('Please upload an audio file first.');
@@ -636,70 +660,41 @@
             analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
             analyzeBtn.disabled = true;
 
-            // Get selected model
-            const modelType = document.getElementById('modelSelect').value;
-            
-            // Create FormData
-            const formData = new FormData();
-            formData.append('audio', currentAudioFile);
-            formData.append('model_type', modelType);
-
-            try {
-                // Determine API URL (for deployment)
-                const baseUrl = window.location.origin;
-                const apiUrl = `${baseUrl}/api/predict`;
-                
-                // Make API request
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const result = await response.json();
-                
-                // Hide loading
+            // Simulate AI analysis (DEMO MODE)
+            setTimeout(() => {
                 loading.classList.remove('show');
                 results.style.display = 'block';
                 
-                if (result.success) {
-                    // Update UI with results
-                    updateResults(result);
-                } else {
-                    // Show error
-                    statusText.textContent = 'ANALYSIS FAILED';
-                    statusText.className = 'result-status status-faulty';
-                    probabilityText.textContent = 'ERROR';
-                    probabilityText.style.color = '#f44336';
-                    recommendationText.textContent = result.error || 'Please try again with a different audio file.';
-                }
+                // Generate realistic simulated results
+                const isFaulty = Math.random() > 0.6; // 40% chance faulty
+                const probability = isFaulty ? 
+                    Math.random() * 25 + 70 :  // 70-95% for faulty
+                    Math.random() * 25 + 5;    // 5-30% for normal
                 
-            } catch (error) {
-                console.error('API Error:', error);
+                const result = {
+                    success: true,
+                    status: isFaulty ? 'FAULTY' : 'NORMAL',
+                    probability: probability / 100,
+                    color: isFaulty ? 'red' : 'green',
+                    recommendation: isFaulty ? 
+                        '🚨 Engine fault detected! Immediate inspection recommended.' : 
+                        '✅ Engine appears to be in normal condition.',
+                    model_used: 'AI Engine',
+                    confidence: probability > 70 ? 'HIGH' : probability > 30 ? 'MEDIUM' : 'LOW',
+                    timestamp: new Date().toISOString()
+                };
                 
-                // Hide loading
-                loading.classList.remove('show');
-                results.style.display = 'block';
+                updateResults(result);
                 
-                // Show error
-                statusText.textContent = 'NETWORK ERROR';
-                statusText.className = 'result-status status-faulty';
-                probabilityText.textContent = 'ERROR';
-                probabilityText.style.color = '#f44336';
-                recommendationText.textContent = 'Failed to connect to server. Please check your connection.';
-                
-                // For demo purposes, show sample results
-                setTimeout(() => {
-                    showSampleResults();
-                }, 500);
-            } finally {
                 // Reset button
                 analyzeBtn.innerHTML = '<i class="fas fa-search"></i> Analyze Engine Sound';
                 analyzeBtn.disabled = false;
-            }
+            }, 1500);
         });
 
         // Sample button handler
         sampleBtn.addEventListener('click', () => {
+            // Create a dummy file for sample
             resetResults();
             resultPlaceholder.style.display = 'none';
             resultDisplay.style.display = 'block';
@@ -710,7 +705,21 @@
             setTimeout(() => {
                 loading.classList.remove('show');
                 results.style.display = 'block';
-                showSampleResults();
+                
+                // Show sample results
+                const isFaulty = Math.random() > 0.5;
+                const probability = isFaulty ? 85 : 15;
+                
+                updateResults({
+                    status: isFaulty ? 'FAULTY' : 'NORMAL',
+                    probability: probability / 100,
+                    color: isFaulty ? 'red' : 'green',
+                    model_used: 'AI Engine',
+                    confidence: isFaulty ? 'HIGH' : 'LOW',
+                    recommendation: isFaulty ? 
+                        'Sample: Engine fault detected. Knocking sound pattern identified.' : 
+                        'Sample: Engine running normally. No irregular patterns detected.'
+                });
             }, 1500);
         });
 
@@ -729,37 +738,23 @@
             progressBar.style.width = `${probabilityPercent}%`;
             
             // Update details
-            modelUsed.textContent = data.model_used;
-            confidenceText.textContent = data.confidence;
+            modelUsed.textContent = data.model_used || 'AI Engine';
+            confidenceText.textContent = data.confidence || 'MEDIUM';
             
             // Update confidence badge
             confidenceBadge.className = 'confidence-badge';
-            confidenceBadge.classList.add(`confidence-${data.confidence.toLowerCase()}`);
-            confidenceBadge.textContent = data.confidence;
+            const confidenceClass = data.confidence ? `confidence-${data.confidence.toLowerCase()}` : 'confidence-medium';
+            confidenceBadge.classList.add(confidenceClass);
+            confidenceBadge.textContent = data.confidence || 'MEDIUM';
             
-            timestamp.textContent = new Date(data.timestamp).toLocaleTimeString();
-            recommendationText.textContent = data.recommendation;
+            timestamp.textContent = new Date().toLocaleTimeString();
+            recommendationText.textContent = data.recommendation || 'Analysis complete.';
             
-            // Play audio
-            audioPlayer.src = currentAudioUrl;
-            audioPlayer.load();
-        }
-
-        // Show sample results (for demo)
-        function showSampleResults() {
-            const sampleData = {
-                status: Math.random() > 0.5 ? 'NORMAL' : 'FAULTY',
-                probability: Math.random(),
-                color: Math.random() > 0.5 ? '#4caf50' : '#f44336',
-                model_used: document.getElementById('modelSelect').value === 'cnn' ? 'CNN' : 'Random Forest',
-                confidence: Math.random() > 0.7 ? 'HIGH' : Math.random() > 0.4 ? 'MEDIUM' : 'LOW',
-                timestamp: new Date().toISOString(),
-                recommendation: Math.random() > 0.5 
-                    ? 'Engine appears to be in normal condition. Regular maintenance recommended.' 
-                    : 'Potential fault detected. Inspection recommended as soon as possible.'
-            };
-            
-            updateResults(sampleData);
+            // Play audio if available
+            if (currentAudioUrl) {
+                audioPlayer.src = currentAudioUrl;
+                audioPlayer.load();
+            }
         }
 
         // Reset results
@@ -770,7 +765,7 @@
         }
 
         // Initialize
-        console.log('Engine Fault Detection System Loaded');
+        console.log('Engine Fault Detection System Loaded - DEMO MODE');
     </script>
 </body>
-</html> 
+</html>
